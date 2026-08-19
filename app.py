@@ -7,52 +7,69 @@ st.set_page_config(page_title="Parlay Analytics PRO", page_icon="⚽", layout="w
 st.markdown("""
     <style>
     .main { background-color: #121212; }
-    .card { background-color: #1E1E1E; padding: 18px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #2A2A2A; }
-    .metric-box { background-color: #262626; padding: 10px; border-radius: 8px; text-align: center; }
+    .card { background-color: #1E1E1E; padding: 18px; border-radius: 12px; margin-bottom: 15px; border: 1px solid #2A2A2A; }
     </style>
 """, unsafe_allow_html=True)
 
-# 🔑 Tu API Key configurada
-API_KEY = "56fd7c3595dc43a9bc11e6bc256c4dd5"
-
 st.title("⚽ PARLAY ANALYTICS PRO")
-st.subheader("📅 Cartelera Automática & Tendencias de Apuestas")
+st.subheader("🌐 Cartelera Internacional Automática & Tendencias")
+
+# Configuración de ligas compatibles con la API de ESPN
+LIGAS = {
+    "🇲🇽 Liga MX": "mex.1",
+    "🇪🇺 Champions League": "uefa.champions",
+    "🇬🇧 Premier League": "eng.1",
+    "🇪🇸 LaLiga": "esp.1",
+    "🇮🇹 Serie A": "ita.1",
+    "🇩🇪 Bundesliga": "ger.1",
+    "🇫🇷 Ligue 1": "fra.1",
+    "🇸🇦 Liga de Arabia": "sau.1",
+    "🇺🇸 MLS": "usa.1"
+}
+
+liga_seleccionada = st.selectbox("🏆 Selecciona una competición para ver la cartelera:", list(LIGAS.keys()))
 
 @st.cache_data(ttl=1800)
-def obtener_partidos():
-    headers = {'X-Auth-Token': API_KEY}
-    # Consulta los partidos de la Liga MX y principales ligas del día / próximos días
-    url = 'https://api.football-data.org/v4/matches'
+def obtener_partidos(codigo_liga):
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{codigo_liga}/scoreboard"
     try:
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, timeout=5)
         if response.status_code == 200:
-            data = response.json()
-            return data.get('matches', [])
-    except Exception as e:
+            events = response.json().get('events', [])
+            partidos = []
+            for ev in events:
+                comp = ev['competitions'][0]
+                partidos.append({
+                    "local": comp['competitors'][0]['team']['displayName'],
+                    "visita": comp['competitors'][1]['team']['displayName'],
+                    "fecha": ev.get('date', '')[:10],
+                    "estado": ev['status']['type']['shortDetail']
+                })
+            return partidos
+    except Exception:
         pass
     return []
 
-st.write("🔄 *Sincronizando la cartelera de hoy y mañana en tiempo real...*")
-
-matches = obtener_partidos()
+codigo = LIGAS[liga_seleccionada]
+matches = obtener_partidos(codigo)
 
 if not matches:
-    st.warning("⚠️ No se encontraron partidos programados para las próximas horas o la liga está en pausa entre jornadas. ¡Revisa más tarde!")
+    st.info(f"📌 No hay partidos programados actualmente para {liga_seleccionada}. Revisa más tarde o selecciona otra liga.")
 else:
-    for match in matches[:10]:  # Muestra los partidos más próximos
-        local = match['homeTeam']['name']
-        visita = match['awayTeam']['name']
-        competicion = match.get('competition', {}).get('name', 'Liga / Torneo')
-        fecha = match.get('utcDate', '')[:10]
+    for match in matches:
+        local = match['local']
+        visita = match['visita']
+        fecha = match['fecha']
+        estado = match['estado']
 
         st.markdown(f"""
             <div class="card">
-                <span style="color:#00E676; font-size:12px; font-weight:bold;">🏆 {competicion} | 📅 {fecha}</span>
-                <h3 style="margin:5px 0 15px 0; color:#FFFFFF;">🏟️ {local} vs {visita}</h3>
+                <span style="color:#00E676; font-size:12px; font-weight:bold;">🏆 {liga_seleccionada} | 📅 {fecha} ({estado})</span>
+                <h3 style="margin:5px 0 10px 0; color:#FFFFFF;">🏟️ {local} vs {visita}</h3>
             </div>
         """, unsafe_allow_html=True)
 
-        # Generador de estimaciones automatizadas para el parlay
+        # Simulación automatizada de probabilidades y métricas
         exp_loc = np.random.uniform(1.2, 1.8)
         exp_vis = np.random.uniform(0.9, 1.5)
 
