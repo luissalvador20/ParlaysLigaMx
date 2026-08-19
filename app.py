@@ -1,5 +1,4 @@
 import streamlit as st
-import requests
 import numpy as np
 
 # Configuración de página con diseño oscuro
@@ -17,24 +16,36 @@ st.markdown("""
 st.title("⚽ PARLAY ANALYTICS PRO")
 st.subheader("Análisis Visual de Partidos & Tendencias de Apuestas")
 
-# Matriz de Fuerzas y Datos
+# MATRIZ COMPLETA - LIGA MX (18 EQUIPOS)
 FUERZA_EQUIPOS = {
     "América": {"atq": 1.65, "def": 0.85, "star": "Henry Martín", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/210344.png"},
     "Tigres UANL": {"atq": 1.55, "def": 0.90, "star": "André-Pierre Gignac", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/88302.png"},
     "Monterrey": {"atq": 1.50, "def": 0.90, "star": "Germán Berterame", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/248559.png"},
     "Toluca": {"atq": 1.60, "def": 1.10, "star": "Paulinho", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/188440.png"},
     "Cruz Azul": {"atq": 1.45, "def": 0.80, "star": "Giorgos Giakoumakis", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/210609.png"},
+    "Pachuca": {"atq": 1.35, "def": 1.05, "star": "Salomón Rondón", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/116239.png"},
+    "Guadalajara": {"atq": 1.25, "def": 1.00, "star": "Javier Hernández", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/148818.png"},
+    "Pumas UNAM": {"atq": 1.20, "def": 1.10, "star": "Guillermo Martínez", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/215357.png"},
     "León": {"atq": 1.15, "def": 1.15, "star": "Jhonder Cádiz", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/208537.png"},
+    "Santos Laguna": {"atq": 1.05, "def": 1.25, "star": "Anthony Lozano", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/163013.png"},
+    "Atlas": {"atq": 0.95, "def": 1.15, "star": "Uroš Đurđević", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/183204.png"},
+    "Atletico San Luis": {"atq": 1.10, "def": 1.30, "star": "Fran Boli", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/208226.png"},
+    "Necaxa": {"atq": 1.00, "def": 1.20, "star": "Diber Cambindo", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/257371.png"},
+    "Tijuana": {"atq": 1.10, "def": 1.35, "star": "Carlos González", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/200676.png"},
+    "Mazatlan FC": {"atq": 0.90, "def": 1.30, "star": "Brian Rubio", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/252980.png"},
     "FC Juarez": {"atq": 0.85, "def": 1.35, "star": "Óscar Estupiñán", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/215707.png"},
-    "Querétaro": {"atq": 0.80, "def": 1.40, "star": "Rubén Rubio", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/png/2200/default.png"}
+    "Querétaro": {"atq": 0.80, "def": 1.40, "star": "Rubén Rubio", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/png/2200/default.png"},
+    "Puebla": {"atq": 0.80, "def": 1.45, "star": "Lucas Cavallini", "foto": "https://a.espncdn.com/combiner/i?img=/i/headshots/soccer/players/full/175855.png"}
 }
 
 col1, col2 = st.columns(2)
 
+equipos_ordenados = sorted(list(FUERZA_EQUIPOS.keys()))
+
 with col1:
-    local = st.selectbox("🏠 Equipo Local", list(FUERZA_EQUIPOS.keys()), index=5)
+    local = st.selectbox("🏠 Equipo Local", equipos_ordenados, index=0)
 with col2:
-    visita = st.selectbox("✈️ Equipo Visitante", list(FUERZA_EQUIPOS.keys()), index=2)
+    visita = st.selectbox("✈️ Equipo Visitante", equipos_ordenados, index=1)
 
 if st.button("🔥 GENERAR ANÁLISIS COMPLETO", use_container_width=True):
     if local == visita:
@@ -43,7 +54,7 @@ if st.button("🔥 GENERAR ANÁLISIS COMPLETO", use_container_width=True):
         st_local = FUERZA_EQUIPOS[local]
         st_visita = FUERZA_EQUIPOS[visita]
         
-        # Poisson
+        # Simulación de Poisson
         exp_local = (st_local["atq"] * 1.15) / st_visita["def"]
         exp_visita = st_visita["atq"] / st_local["def"]
         
