@@ -24,10 +24,11 @@ st.markdown("""
 
 st.title("⚽ PARLAY ANALYTICS PRO")
 
-# Diccionario de 10 Ligas
+# Diccionario de Ligas con Clasificación de Champions agregada
 LIGAS = {
     "🇲🇽 Liga MX": "mex.1",
     "🇪🇺 Champions League": "uefa.champions",
+    "🇪🇺 Champions (Clasificación)": "uefa.champions_qualifying",
     "🇪🇺 Europa League": "uefa.europa",
     "🇬🇧 Premier League": "eng.1",
     "🇪🇸 LaLiga": "esp.1",
