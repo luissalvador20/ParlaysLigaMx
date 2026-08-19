@@ -8,17 +8,46 @@ st.set_page_config(page_title="Parlay Analytics PRO", page_icon="⚽", layout="w
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
-    .card-live { background-color: #1F1B24; padding: 14px; border-radius: 12px; border-left: 5px solid #FF5252; margin-bottom: 12px; }
-    .card-today { background-color: #161B22; padding: 14px; border-radius: 12px; border-left: 5px solid #00E676; margin-bottom: 12px; }
-    .card-tomorrow { background-color: #161B22; padding: 14px; border-radius: 12px; border-left: 5px solid #FFD600; margin-bottom: 12px; }
-    .card-upcoming { background-color: #161B22; padding: 14px; border-radius: 12px; border-left: 5px solid #29B6F6; margin-bottom: 12px; }
     
-    .badge-live { background-color: #FF5252; color: white; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .badge-today { background-color: #00E676; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .badge-tomorrow { background-color: #FFD600; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .badge-upcoming { background-color: #29B6F6; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    /* Tarjetas distintivas por estatus */
+    .card-live { 
+        background-color: #261517; 
+        padding: 16px; 
+        border-radius: 12px; 
+        border: 2px solid #FF5252; 
+        box-shadow: 0 0 10px rgba(255,82,82,0.3); 
+        margin-bottom: 12px; 
+    }
+    .card-today { 
+        background-color: #12241A; 
+        padding: 16px; 
+        border-radius: 12px; 
+        border: 2px solid #00E676; 
+        box-shadow: 0 0 10px rgba(0,230,118,0.2); 
+        margin-bottom: 12px; 
+    }
+    .card-tomorrow { 
+        background-color: #262312; 
+        padding: 16px; 
+        border-radius: 12px; 
+        border: 2px solid #FFD600; 
+        margin-bottom: 12px; 
+    }
+    .card-upcoming { 
+        background-color: #121F2B; 
+        padding: 16px; 
+        border-radius: 12px; 
+        border: 2px solid #29B6F6; 
+        margin-bottom: 12px; 
+    }
     
-    .hit-box { background-color: #1B382B; color: #00E676; padding: 5px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin-top: 4px; }
+    /* Badges / Etiquetas destacadas */
+    .badge-live { background-color: #FF5252; color: #FFF; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+    .badge-today { background-color: #00E676; color: #000; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+    .badge-tomorrow { background-color: #FFD600; color: #000; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+    .badge-upcoming { background-color: #29B6F6; color: #000; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+    
+    .hit-box { background-color: #1B382B; color: #00E676; padding: 5px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin-top: 6px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -67,7 +96,7 @@ def obtener_eventos(codigo_liga):
                     dia_tag = "🟡 MAÑANA"
                     categoria_dia = "tomorrow"
                 else:
-                    dia_tag = f"📅 PRÓXIMO ({fecha_partido})"
+                    dia_tag = f"🔵 PRÓXIMO ({fecha_partido})"
                     categoria_dia = "upcoming"
                 
                 partidos.append({
@@ -88,21 +117,35 @@ def obtener_eventos(codigo_liga):
         pass
     return []
 
-# Menú desplegable con total de partidos próximos
+# Clasificación descriptiva en el Selector de Liga
 ligas_con_indicador = {}
 for nombre, codigo in LIGAS.items():
     partidos_temp = obtener_eventos(codigo)
-    num_juegos = len(partidos_temp)
-    if num_juegos > 0:
-        label = f"{nombre} 🟢 ({num_juegos} partidos próximos)"
+    num_live = sum(1 for p in partidos_temp if p['estado_state'] == 'in')
+    num_today = sum(1 for p in partidos_temp if p['categoria_dia'] == 'today' and p['estado_state'] != 'in')
+    num_tomorrow = sum(1 for p in partidos_temp if p['categoria_dia'] == 'tomorrow')
+    num_upcoming = sum(1 for p in partidos_temp if p['categoria_dia'] == 'upcoming')
+    
+    detalles = []
+    if num_live > 0:
+        detalles.append(f"🔴 {num_live} en vivo")
+    if num_today > 0:
+        detalles.append(f"🟢 {num_today} hoy")
+    if num_tomorrow > 0:
+        detalles.append(f"🟡 {num_tomorrow} mañana")
+    if num_upcoming > 0:
+        detalles.append(f"🔵 {num_upcoming} próximos")
+        
+    if detalles:
+        label = f"{nombre} | " + " • ".join(detalles)
     else:
-        label = f"{nombre} ⚪ (Sin partidos próximos)"
+        label = f"{nombre} ⚪ (Sin partidos)"
+        
     ligas_con_indicador[label] = codigo
 
 liga_seleccionada = st.selectbox("🏆 Selecciona una liga:", list(ligas_con_indicador.keys()))
 codigo_seleccionado = ligas_con_indicador[liga_seleccionada]
 
-# Casilla opcional para activar las estadísticas cuando quieras analizar
 mostrar_pronosticos = st.checkbox("📊 Mostrar pronósticos y estadísticas de parlay", value=False)
 
 matches = obtener_eventos(codigo_seleccionado)
@@ -123,37 +166,36 @@ else:
         is_live = (estado_state == 'in')
         is_post = (estado_state == 'post')
 
-        # Tarjetas de Cartelera Limpia
+        # Diseño de Tarjetas con diferenciador visual completo
         if is_live:
             st.markdown(f"""
                 <div class="card-live">
                     <span class="badge-live">🔴 EN VIVO — {estado_desc}</span>
-                    <h2 style="margin:6px 0 0 0; color:#FFF;">⚽ {local} {g_loc} - {g_vis} {visita}</h2>
+                    <h2 style="margin:8px 0 0 0; color:#FFF;">⚽ {local} {g_loc} - {g_vis} {visita}</h2>
                 </div>
             """, unsafe_allow_html=True)
         elif cat_dia == "today":
             st.markdown(f"""
                 <div class="card-today">
-                    <span class="badge-today">🟢 HOY | ⏰ {match['hora']} hrs</span>
-                    <h3 style="margin:4px 0 0 0; color:#FFF;">🏟️ {local} vs {visita}</h3>
+                    <span class="badge-today">🟢 SE JUEGA HOY | ⏰ {match['hora']} hrs</span>
+                    <h3 style="margin:6px 0 0 0; color:#FFF;">🏟️ {local} vs {visita}</h3>
                 </div>
             """, unsafe_allow_html=True)
         elif cat_dia == "tomorrow":
             st.markdown(f"""
                 <div class="card-tomorrow">
-                    <span class="badge-tomorrow">🟡 MAÑANA | ⏰ {match['hora']} hrs</span>
-                    <h3 style="margin:4px 0 0 0; color:#FFF;">🏟️ {local} vs {visita}</h3>
+                    <span class="badge-tomorrow">🟡 SE JUEGA MAÑANA | ⏰ {match['hora']} hrs</span>
+                    <h3 style="margin:6px 0 0 0; color:#FFF;">🏟️ {local} vs {visita}</h3>
                 </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
                 <div class="card-upcoming">
-                    <span class="badge-upcoming">{match['dia_tag']} | ⏰ {match['hora']} hrs</span>
-                    <h3 style="margin:4px 0 0 0; color:#FFF;">🏟️ {local} vs {visita}</h3>
+                    <span class="badge-upcoming">🔵 FALTAN DÍAS ({match['fecha']}) | ⏰ {match['hora']} hrs</span>
+                    <h3 style="margin:6px 0 0 0; color:#FFF;">🏟️ {local} vs {visita}</h3>
                 </div>
             """, unsafe_allow_html=True)
 
-        # Palomitas de seguimiento en tiempo real
         if is_live or is_post:
             hits = []
             if tot_goles > 2.5:
@@ -169,7 +211,6 @@ else:
                 hit_html = " ".join([f"<div class='hit-box'>{h}</div>" for h in hits])
                 st.markdown(f"<div>{hit_html}</div><br>", unsafe_allow_html=True)
 
-        # Si activas la casilla arriba, despliega los porcentajes
         if mostrar_pronosticos:
             p_loc = np.random.uniform(36.0, 50.0)
             p_vis = np.random.uniform(26.0, 40.0)
