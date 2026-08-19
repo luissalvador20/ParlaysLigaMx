@@ -9,12 +9,21 @@ st.markdown("""
     <style>
     .main { background-color: #0E1117; }
     
+    /* Contenedores con borde de color */
+    .card-live { background-color: #1A1D24; padding: 12px; border-radius: 8px; border-left: 5px solid #FF5252; margin-bottom: 8px; }
+    .card-today { background-color: #1A1D24; padding: 12px; border-radius: 8px; border-left: 5px solid #00E676; margin-bottom: 8px; }
+    .card-tomorrow { background-color: #1A1D24; padding: 12px; border-radius: 8px; border-left: 5px solid #FFD600; margin-bottom: 8px; }
+    .card-upcoming { background-color: #1A1D24; padding: 12px; border-radius: 8px; border-left: 5px solid #29B6F6; margin-bottom: 8px; }
+    
+    /* Badges de fecha */
     .badge-live { background-color: #FF5252; color: #FFF; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .badge-today { background-color: #00E676; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .badge-tomorrow { background-color: #FFD600; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .badge-upcoming { background-color: #29B6F6; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     
-    /* Cajas de acierto y error */
-    .box-hit { background-color: #12241A; color: #00E676; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin: 3px 2px; }
-    .box-miss { background-color: #261517; color: #FF5252; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #FF5252; display: inline-block; margin: 3px 2px; }
+    /* Cajas de auditoría */
+    .box-hit { background-color: #12241A; color: #00E676; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin: 2px; }
+    .box-miss { background-color: #261517; color: #FF5252; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #FF5252; display: inline-block; margin: 2px; }
     
     .stSelectbox label { font-size: 14px; color: #00E676; font-weight: bold; }
     </style>
@@ -22,7 +31,7 @@ st.markdown("""
 
 st.title("⚽ PARLAY ANALYTICS PRO")
 
-# DICCIONARIO CON LAS 10 LIGAS INCLUYENDO EUROPA LEAGUE
+# Las 10 Ligas
 LIGAS = {
     "🇲🇽 Liga MX": "mex.1",
     "🇪🇺 Champions League": "uefa.champions",
@@ -86,6 +95,20 @@ def obtener_eventos_general(codigo_liga):
                 else:
                     cat_dia = "upcoming"
 
+                # Obtención de jugadores/tiradores clave si la API les pasa datos
+                leaders = comp.get('leaders', [])
+                jugadores = []
+                for leader in leaders:
+                    for l_entry in leader.get('leaders', []):
+                        athlete = l_entry.get('athlete', {})
+                        if athlete:
+                            jugadores.append({
+                                "nombre": athlete.get('displayName', 'Jugador'),
+                                "foto": athlete.get('headshot', {}).get('href', 'https://a.espncdn.com/i/headshots/default-player.png'),
+                                "stat": l_entry.get('displayValue', ''),
+                                "equipo": athlete.get('team', {}).get('displayName', '')
+                            })
+
                 partidos.append({
                     "id": ev['id'],
                     "local": home['team']['displayName'],
@@ -96,14 +119,15 @@ def obtener_eventos_general(codigo_liga):
                     "hora": ev.get('date', '')[11:16],
                     "cat_dia": cat_dia,
                     "estado_state": ev['status']['type']['state'],
-                    "estado_desc": ev['status']['type']['shortDetail']
+                    "estado_desc": ev['status']['type']['shortDetail'],
+                    "jugadores": jugadores
                 })
             return partidos
     except Exception:
         pass
     return []
 
-# Filtro de Días Estilo FotMob
+# Selector de fechas estilo FotMob
 hoy_dt = datetime.now()
 ayer_dt = hoy_dt - timedelta(days=1)
 manana_dt = hoy_dt + timedelta(days=1)
@@ -119,9 +143,27 @@ st.subheader("📅 Fecha")
 filtro_dia = st.radio("Selecciona el día:", list(dias_fotmob.keys()), index=1, horizontal=True)
 fecha_seleccionada = dias_fotmob[filtro_dia]
 
-# Selección de Liga
-liga_nom = st.selectbox("🏆 Selecciona Competición:", list(LIGAS.keys()))
-codigo_liga = LIGAS[liga_nom]
+# CONTEO DE PARTIDOS POR LIGA CON INDICADORES
+ligas_con_indicador = {}
+for nombre, codigo in LIGAS.items():
+    partidos_temp = obtener_eventos_general(codigo)
+    num_live = sum(1 for p in partidos_temp if p['estado_state'] == 'in')
+    num_today = sum(1 for p in partidos_temp if p['cat_dia'] == 'today' and p['estado_state'] != 'in')
+    num_tomorrow = sum(1 for p in partidos_temp if p['cat_dia'] == 'tomorrow')
+    
+    detalles = []
+    if num_live > 0:
+        detalles.append(f"🔴 {num_live} en vivo")
+    if num_today > 0:
+        detalles.append(f"🟢 {num_today} hoy")
+    if num_tomorrow > 0:
+        detalles.append(f"🟡 {num_tomorrow} mañana")
+        
+    label = f"{nombre} | " + " • ".join(detalles) if detalles else f"{nombre} ⚪ (Sin partidos)"
+    ligas_con_indicador[label] = codigo
+
+liga_seleccionada = st.selectbox("🏆 Selecciona Competición:", list(ligas_con_indicador.keys()))
+codigo_liga = ligas_con_indicador[liga_seleccionada]
 
 tabla = obtener_tabla_posiciones(codigo_liga)
 matches = obtener_eventos_general(codigo_liga)
@@ -130,7 +172,7 @@ if fecha_seleccionada != "all":
     matches = [p for p in matches if p['fecha'] == fecha_seleccionada]
 
 if not matches:
-    st.info("📌 No hay partidos programados para este día.")
+    st.info("📌 No hay partidos programados para el filtro seleccionado.")
 else:
     for match in matches:
         local = match['local']
@@ -140,11 +182,19 @@ else:
         tot_goles = g_loc + g_vis
         estado_state = match['estado_state']
         estado_desc = match['estado_desc']
+        cat_dia = match['cat_dia']
         
         is_live = (estado_state == 'in')
         is_post = (estado_state == 'post')
 
-        # --- CÁLCULO DE PROBABILIDADES DEL ALGORITMO ---
+        # Clases de color para los contenedores
+        card_class = "card-live" if is_live else (
+            "card-today" if cat_dia == "today" else (
+                "card-tomorrow" if cat_dia == "tomorrow" else "card-upcoming"
+            )
+        )
+
+        # Probabilidades Algoritmo
         info_loc = tabla.get(local, {"posicion": 10, "puntos": 15, "dif_goles": 0})
         info_vis = tabla.get(visita, {"posicion": 10, "puntos": 15, "dif_goles": 0})
         
@@ -164,10 +214,8 @@ else:
         aa_prob = min(75.0, max(40.0, 48.0 + (dg_total * 0.5)))
 
         prediccion_ganador = local if p_loc > p_vis else visita
-        prediccion_over = over25_prob >= 50.0
-        prediccion_aa = aa_prob >= 50.0
 
-        # --- TÍTULO SEGÚN ESTADO ---
+        # Título corto para el Desplegable
         if is_live:
             titulo_partido = f"🔴 EN VIVO ({estado_desc}) | {local} {g_loc} - {g_vis} {visita}"
         elif is_post:
@@ -176,41 +224,34 @@ else:
             titulo_partido = f"⏰ {match['hora']} hrs | {local} vs {visita}"
 
         with st.expander(titulo_partido, expanded=False):
+            # Tarjeta estilizada con el color lateral
+            st.markdown(f"<div class='{card_class}'>", unsafe_allow_html=True)
+            
+            # Si ya terminó o está en vivo -> AUDITORÍA
             if is_post or is_live:
-                st.markdown("#### 🎯 Auditoría del Pronóstico vs Realidad")
+                st.markdown("#### 🎯 Auditoría: Pronóstico vs Resultado")
                 auditoria_html = []
 
-                # 1. Ganador
                 ganador_real = local if g_loc > g_vis else (visita if g_vis > g_loc else "Empate")
                 if ganador_real == "Empate":
-                    auditoria_html.append("<div class='box-miss'>❌ Ganador: Hubo Empate</div>")
+                    auditoria_html.append("<div class='box-miss'>❌ Ganador: Empate</div>")
                 elif prediccion_ganador == ganador_real:
                     auditoria_html.append(f"<div class='box-hit'>✅ Ganador: Atinado ({ganador_real})</div>")
                 else:
-                    auditoria_html.append(f"<div class='box-miss'>❌ Ganador: Falló (Predijo {prediccion_ganador}, ganó {ganador_real})</div>")
+                    auditoria_html.append(f"<div class='box-miss'>❌ Ganador: Falló (Predijo {prediccion_ganador})</div>")
 
-                # 2. Over 2.5
-                real_over = (tot_goles > 2.5)
-                if prediccion_over == real_over:
+                if (over25_prob >= 50.0) == (tot_goles > 2.5):
                     auditoria_html.append(f"<div class='box-hit'>✅ Over 2.5: Atinado ({tot_goles} goles)</div>")
                 else:
                     auditoria_html.append(f"<div class='box-miss'>❌ Over 2.5: Falló ({tot_goles} goles)</div>")
 
-                # 3. Ambos Anotan
-                real_aa = (g_loc >= 1 and g_vis >= 1)
-                if prediccion_aa == real_aa:
-                    auditoria_html.append(f"<div class='box-hit'>✅ Ambos Anotan: Atinado</div>")
-                else:
-                    auditoria_html.append(f"<div class='box-miss'>❌ Ambos Anotan: Falló</div>")
-
                 st.markdown(" ".join(auditoria_html), unsafe_allow_html=True)
-                st.markdown("---")
+                st.markdown("<br>", unsafe_allow_html=True)
 
-            # --- METRICAS DE LA APP ---
+            # MÉTRICAS Y PRONÓSTICOS
             pos_text_loc = f"#{info_loc['posicion']}" if local in tabla else ""
             pos_text_vis = f"#{info_vis['posicion']}" if visita in tabla else ""
 
-            st.markdown("### 📊 Pronóstico Inicial del Algoritmo")
             col1, col2, col3 = st.columns(3)
             col1.metric(f"🟢 Gana {local[:10]} {pos_text_loc}", f"{p_loc:.1f}%")
             col2.metric("⚪ Empate", f"{p_emp:.1f}%")
@@ -221,3 +262,15 @@ else:
             m2.metric("🤝 Ambos Anotan", f"{aa_prob:.1f}%")
             m3.metric("🚩 Córners Est.", "~9.5")
             m4.metric("🟨 Tarjetas Est.", "~4.2")
+
+            # TIRADORES Y JUGADORES CLAVE (CON FOTO)
+            if match['jugadores']:
+                st.markdown("---")
+                st.markdown("🎯 **Jugadores Clave / Tiradores a destacar:**")
+                cols_j = st.columns(min(4, len(match['jugadores'])))
+                for idx, jug in enumerate(match['jugadores'][:4]):
+                    with cols_j[idx]:
+                        st.image(jug['foto'], width=60)
+                        st.caption(f"**{jug['nombre']}**\n{jug['stat']}")
+
+            st.markdown("</div>", unsafe_allow_html=True)
