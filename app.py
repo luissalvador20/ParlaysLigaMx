@@ -5,80 +5,122 @@ import zoneinfo
 
 st.set_page_config(page_title="Parlay Analytics PRO", page_icon="⚽", layout="wide")
 
-# Estilos CSS - Tarjetas y Barras estilo Draftea
+# Estilos CSS - Cuadro Único Integrado estilo Draftea
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
     
-    .card-live { background-color: #1A1D24; padding: 12px; border-radius: 8px; border-left: 5px solid #FF5252; margin-bottom: 8px; }
-    .card-today { background-color: #1A1D24; padding: 12px; border-radius: 8px; border-left: 5px solid #00E676; margin-bottom: 8px; }
-    .card-tomorrow { background-color: #1A1D24; padding: 12px; border-radius: 8px; border-left: 5px solid #FFD600; margin-bottom: 8px; }
-    .card-upcoming { background-color: #1A1D24; padding: 12px; border-radius: 8px; border-left: 5px solid #29B6F6; margin-bottom: 8px; }
-    
-    .box-hit { background-color: #12241A; color: #00E676; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin: 2px; }
-    .box-miss { background-color: #261517; color: #FF5252; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #FF5252; display: inline-block; margin: 2px; }
+    /* Contenedor Único Integrado */
+    .unified-card {
+        background-color: #1A1D24;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 15px;
+        border: 1px solid #2A2E39;
+        color: white;
+    }
     
     .score-banner {
         background-color: #262A36;
         padding: 10px;
         border-radius: 8px;
         text-align: center;
-        font-size: 20px;
+        font-size: 18px;
         font-weight: bold;
         color: #FFFFFF;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
+    }
+
+    /* Fila de Predicción Integrada */
+    .pred-row {
+        background-color: #121418;
+        padding: 10px 14px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        border: 1px solid #2A2E39;
+        flex-wrap: wrap;
+        gap: 8px;
     }
     
-    /* --- BARRAS Y TARJETAS DRAFTEA --- */
-    .draftea-card {
-        background-color: #121418;
-        border-radius: 10px;
-        padding: 12px 14px;
-        margin-bottom: 12px;
-        border: 1px solid #2A2E39;
-        color: white;
+    .pred-item {
+        text-align: center;
+        flex: 1;
+        min-width: 90px;
     }
-    .draftea-header {
+    .pred-label {
         font-size: 11px;
         color: #8A8F9D;
         text-transform: uppercase;
         font-weight: 600;
-        margin-bottom: 4px;
     }
-    .draftea-title {
+    .pred-val {
         font-size: 15px;
         font-weight: bold;
-        color: #FFFFFF;
+        color: #00E676;
+    }
+
+    /* Barras estilo Draftea */
+    .draftea-section-title {
+        font-size: 13px;
+        font-weight: bold;
+        color: #8A8F9D;
+        text-transform: uppercase;
+        margin-top: 10px;
         margin-bottom: 8px;
+        letter-spacing: 0.5px;
+    }
+
+    .draftea-item {
+        background-color: #121418;
+        border-radius: 8px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        border: 1px solid #2A2E39;
+    }
+    .draftea-header-flex {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        font-weight: bold;
+        margin-bottom: 6px;
+    }
+    .draftea-title {
+        color: #FFFFFF;
+    }
+    .draftea-details {
+        color: #8A8F9D;
+        font-size: 11px;
     }
     .progress-container {
         width: 100%;
         background-color: #262A36;
-        border-radius: 8px;
-        height: 16px;
+        border-radius: 6px;
+        height: 14px;
         position: relative;
         overflow: hidden;
     }
     .progress-bar-green {
         background: linear-gradient(90deg, #00C853, #00E676);
         height: 100%;
-        border-radius: 8px;
+        border-radius: 6px;
     }
     .progress-bar-red {
         background: linear-gradient(90deg, #D50000, #FF5252);
         height: 100%;
-        border-radius: 8px;
+        border-radius: 6px;
     }
     .progress-val-text {
         position: absolute;
-        right: 10px;
+        right: 8px;
         top: 0px;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: bold;
         color: #FFFFFF;
-        line-height: 16px;
+        line-height: 14px;
     }
-    .stSelectbox label { font-size: 14px; color: #00E676; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -233,25 +275,8 @@ def obtener_eventos_general(codigo_liga):
     partidos_unicos = {p['id']: p for p in partidos_totales}.values()
     return list(partidos_unicos)
 
-# Conteo por Ligas con Badges
-ligas_con_indicador = {}
-for nombre, codigo in LIGAS.items():
-    partidos_temp = obtener_eventos_general(codigo)
-    num_live = sum(1 for p in partidos_temp if p['estado_state'] == 'in')
-    num_today = sum(1 for p in partidos_temp if p['cat_dia'] == 'today' and p['estado_state'] != 'in')
-    num_tomorrow = sum(1 for p in partidos_temp if p['cat_dia'] == 'tomorrow')
-    
-    detalles = []
-    if num_live > 0:
-        detalles.append(f"🔴 {num_live} en vivo")
-    if num_today > 0:
-        detalles.append(f"🟢 {num_today} hoy")
-    if num_tomorrow > 0:
-        detalles.append(f"🟡 {num_tomorrow} mañana")
-        
-    label = f"{nombre} | " + " • ".join(detalles) if detalles else f"{nombre} ⚪ (Sin partidos)"
-    ligas_con_indicador[label] = codigo
-
+# Selector de Ligas
+ligas_con_indicador = {f"{n}": c for n, c in LIGAS.items()}
 liga_seleccionada = st.selectbox("🏆 Selecciona Competición:", list(ligas_con_indicador.keys()))
 codigo_liga = ligas_con_indicador[liga_seleccionada]
 
@@ -261,32 +286,37 @@ matches = obtener_eventos_general(codigo_liga)
 if fecha_seleccionada != "all":
     matches = [p for p in matches if p['fecha'] == fecha_seleccionada]
 
-# Función para Renderizar la Barra Estilo Draftea
-def render_barra_draftea(categoria_str, titulo, actual_val, linea_val, extra_info=""):
-    try:
-        val_num = float(actual_val)
-    except ValueError:
-        val_num = 0.0
-        
-    porcentaje = min(100, int((val_num / linea_val) * 100)) if linea_val > 0 else 0
-    is_hit = val_num >= linea_val
+# Función para generar el HTML de la barra de progreso estilo Draftea
+def armar_barra_draftea_html(titulo, actual_val, linea_val, extra_info="", is_boolean=False):
+    if is_boolean:
+        is_hit = bool(actual_val)
+        porcentaje = 100 if is_hit else 0
+        text_val = "SÍ" if is_hit else "NO"
+    else:
+        try:
+            val_num = float(actual_val)
+        except ValueError:
+            val_num = 0.0
+            
+        porcentaje = min(100, int((val_num / linea_val) * 100)) if linea_val > 0 else 0
+        is_hit = val_num >= linea_val
+        text_val = f"{actual_val} / {linea_val}"
     
     status_icon = "✅" if is_hit else "🔴"
     bar_class = "progress-bar-green" if is_hit else "progress-bar-red"
     
-    subtext = f" • ({extra_info})" if extra_info else ""
-    
-    html = f"""
-    <div class="draftea-card">
-        <div class="draftea-header">{categoria_str}{subtext}</div>
-        <div class="draftea-title">{status_icon} {linea_val}+ | {titulo}</div>
+    return f"""
+    <div class="draftea-item">
+        <div class="draftea-header-flex">
+            <span class="draftea-title">{status_icon} {titulo} (Línea: {linea_val if not is_boolean else 'Ambos anotan'})</span>
+            <span class="draftea-details">{extra_info}</span>
+        </div>
         <div class="progress-container">
             <div class="{bar_class}" style="width: {porcentaje}%;"></div>
-            <span class="progress-val-text">{actual_val} / {linea_val}</span>
+            <span class="progress-val-text">{text_val}</span>
         </div>
     </div>
     """
-    st.markdown(html, unsafe_allow_html=True)
 
 if not matches:
     st.info("📌 No hay partidos programados para el filtro seleccionado.")
@@ -297,19 +327,14 @@ else:
         g_loc = match['local_score']
         g_vis = match['visita_score']
         tot_goles = g_loc + g_vis
+        ambos_anotaron = (g_loc > 0 and g_vis > 0)
+        
         estado_state = match['estado_state']
         estado_desc = match['estado_desc']
-        cat_dia = match['cat_dia']
         stats = match['stats']
         
         is_live = (estado_state == 'in')
         is_post = (estado_state == 'post')
-
-        card_class = "card-live" if is_live else (
-            "card-today" if cat_dia == "today" else (
-                "card-tomorrow" if cat_dia == "tomorrow" else "card-upcoming"
-            )
-        )
 
         info_loc = tabla.get(local, {"posicion": 10, "puntos": 15, "dif_goles": 0})
         info_vis = tabla.get(visita, {"posicion": 10, "puntos": 15, "dif_goles": 0})
@@ -320,106 +345,80 @@ else:
         
         p_loc = min(78.0, max(20.0, (puntos_loc / total_pts) * 100))
         p_vis = min(70.0, max(15.0, (puntos_vis / total_pts) * 100))
-        p_emp = max(15.0, 100.0 - (p_loc + p_vis))
-        
-        s = p_loc + p_vis + p_emp
-        p_loc, p_vis, p_emp = (p_loc/s)*100, (p_vis/s)*100, (p_emp/s)*100
 
+        # Estimaciones de Goles
         dg_total = abs(info_loc['dif_goles']) + abs(info_vis['dif_goles'])
-        over25_prob = min(82.0, max(42.0, 50.0 + (dg_total * 0.8)))
-        aa_prob = min(75.0, max(40.0, 48.0 + (dg_total * 0.5)))
-
-        prediccion_ganador = local if p_loc > p_vis else visita
+        over25_prob = min(85.0, max(40.0, 50.0 + (dg_total * 0.8)))
+        aa_prob = min(80.0, max(38.0, 48.0 + (dg_total * 0.5)))
 
         if is_live:
-            titulo_partido = f"🔴 EN VIVO ({estado_desc}) | {local} {g_loc} - {g_vis} {visita}"
+            header_str = f"🔴 EN VIVO ({estado_desc}) | {local} {g_loc} - {g_vis} {visita}"
         elif is_post:
-            titulo_partido = f"🏁 FINAL | {local} {g_loc} - {g_vis} {visita}"
+            header_str = f"🏁 FINAL | {local} {g_loc} - {g_vis} {visita}"
         else:
-            titulo_partido = f"⏰ {match['hora']} hrs | {local} vs {visita}"
+            header_str = f"⏰ {match['hora']} hrs | {local} vs {visita}"
 
-        with st.expander(titulo_partido, expanded=False):
-            st.markdown(f"<div class='{card_class}'>", unsafe_allow_html=True)
+        # Extracción de valores reales
+        corners_loc = stats['local'].get('wonCorners', stats['local'].get('corners', '0'))
+        corners_vis = stats['visita'].get('wonCorners', stats['visita'].get('corners', '0'))
+        try: tot_corners = int(corners_loc) + int(corners_vis)
+        except ValueError: tot_corners = 0
+
+        shots_loc = stats['local'].get('totalShots', stats['local'].get('shots', '0'))
+        shots_vis = stats['visita'].get('totalShots', stats['visita'].get('shots', '0'))
+        try: tot_shots = int(shots_loc) + int(shots_vis)
+        except ValueError: tot_shots = 0
+
+        shots_on_loc = stats['local'].get('shotsOnTarget', '0')
+        shots_on_vis = stats['visita'].get('shotsOnTarget', '0')
+        try: tot_shots_on = int(shots_on_loc) + int(shots_on_vis)
+        except ValueError: tot_shots_on = 0
+
+        yellow_loc = stats['local'].get('yellowCards', '0')
+        yellow_vis = stats['visita'].get('yellowCards', '0')
+        try: tot_yellow = int(yellow_loc) + int(yellow_vis)
+        except ValueError: tot_yellow = 0
+
+        # CONSTRUCCIÓN DE CUADRO ÚNICO INTEGRADO
+        html_cuadro_unico = f"""
+        <div class="unified-card">
+            <div class="score-banner">{header_str}</div>
             
-            # BANNER DE MARCADOR
-            if is_post or is_live:
-                status_label = "EN VIVO" if is_live else "RESULTADO FINAL"
-                st.markdown(f"<div class='score-banner'>{status_label}: {local} {g_loc} - {g_vis} {visita}</div>", unsafe_allow_html=True)
+            <!-- Fila de Estimaciones / Predicción Inicial -->
+            <div class="pred-row">
+                <div class="pred-item">
+                    <div class="pred-label">Victoria</div>
+                    <div class="pred-val">{p_loc:.0f}% - {p_vis:.0f}%</div>
+                </div>
+                <div class="pred-item">
+                    <div class="pred-label">⚽ Over 2.5</div>
+                    <div class="pred-val">{over25_prob:.0f}%</div>
+                </div>
+                <div class="pred-item">
+                    <div class="pred-label">🤝 AA Est.</div>
+                    <div class="pred-val">{aa_prob:.0f}%</div>
+                </div>
+                <div class="pred-item">
+                    <div class="pred-label">🚩 Córners</div>
+                    <div class="pred-val">~9.5</div>
+                </div>
+                <div class="pred-item">
+                    <div class="pred-label">🟨 Tarjetas</div>
+                    <div class="pred-val">~4.2</div>
+                </div>
+            </div>
 
-            # PROBABILIDADES EN METRICAS PEQUEÑAS
-            st.markdown("#### 📊 Probabilidades y Estimaciones")
-            col1, col2, col3 = st.columns(3)
-            col1.metric(f"🟢 Gana {local[:10]}", f"{p_loc:.1f}%")
-            col2.metric("⚪ Empate", f"{p_emp:.1f}%")
-            col3.metric(f"🔴 Gana {visita[:10]}", f"{p_vis:.1f}%")
-
-            # ESTADÍSTICAS REALES FORMATO DRAFTEA
-            if (is_live or is_post) and (stats['local'] or stats['visita']):
-                st.markdown("---")
-                st.markdown("### 📈 Estadísticas Reales (Estilo Draftea)")
-                
-                # Córners
-                corners_loc = stats['local'].get('wonCorners', stats['local'].get('corners', '0'))
-                corners_vis = stats['visita'].get('wonCorners', stats['visita'].get('corners', '0'))
-                try:
-                    tot_corners = int(corners_loc) + int(corners_vis)
-                except ValueError:
-                    tot_corners = 0
-
-                render_barra_draftea(
-                    categoria_str="🚩 CÓRNERS TOTALES",
-                    titulo="Córners en el partido",
-                    actual_val=tot_corners,
-                    linea_val=9.5,
-                    extra_info=f"{local}: {corners_loc} | {visita}: {corners_vis}"
-                )
-
-                # Tiros Totales
-                shots_loc = stats['local'].get('totalShots', stats['local'].get('shots', '0'))
-                shots_vis = stats['visita'].get('totalShots', stats['visita'].get('shots', '0'))
-                try:
-                    tot_shots = int(shots_loc) + int(shots_vis)
-                except ValueError:
-                    tot_shots = 0
-
-                render_barra_draftea(
-                    categoria_str="🎯 TIROS TOTALES",
-                    titulo="Tiros en el partido",
-                    actual_val=tot_shots,
-                    linea_val=22.5,
-                    extra_info=f"{local}: {shots_loc} | {visita}: {shots_vis}"
-                )
-
-                # Tiros a Puerta
-                shots_on_target_loc = stats['local'].get('shotsOnTarget', '0')
-                shots_on_target_vis = stats['visita'].get('shotsOnTarget', '0')
-                try:
-                    tot_shots_on = int(shots_on_target_loc) + int(shots_on_target_vis)
-                except ValueError:
-                    tot_shots_on = 0
-
-                render_barra_draftea(
-                    categoria_str="⚽ TIROS A PUERTA",
-                    titulo="Tiros a puerta en el partido",
-                    actual_val=tot_shots_on,
-                    linea_val=8.5,
-                    extra_info=f"{local}: {shots_on_target_loc} | {visita}: {shots_on_target_vis}"
-                )
-
-                # Tarjetas
-                yellow_loc = stats['local'].get('yellowCards', '0')
-                yellow_vis = stats['visita'].get('yellowCards', '0')
-                try:
-                    tot_yellow = int(yellow_loc) + int(yellow_vis)
-                except ValueError:
-                    tot_yellow = 0
-
-                render_barra_draftea(
-                    categoria_str="🟨 TARJETAS AMARILLAS",
-                    titulo="Tarjetas amarillas en el partido",
-                    actual_val=tot_yellow,
-                    linea_val=4.5,
-                    extra_info=f"{local}: {yellow_loc} | {visita}: {yellow_vis}"
-                )
-
-            st.markdown("</div>", unsafe_allow_html=True)
+            <!-- Avance Real / Transcurso del Partido -->
+            <div class="draftea-section-title">📊 Avance en Tiempo Real / Resultado</div>
+            
+            {armar_barra_draftea_html('⚽ Goles Totales (+1.5)', tot_goles, 1.5, f"Marcador: {g_loc} - {g_vis}")}
+            {armar_barra_draftea_html('⚽ Goles Totales (+2.5)', tot_goles, 2.5, f"Marcador: {g_loc} - {g_vis}")}
+            {armar_barra_draftea_html('🤝 Ambos Anotan (AA)', ambos_anotaron, 1.0, f"{local}: {g_loc} | {visita}: {g_vis}", is_boolean=True)}
+            {armar_barra_draftea_html('🚩 Córners Totales', tot_corners, 9.5, f"{local}: {corners_loc} | {visita}: {corners_vis}")}
+            {armar_barra_draftea_html('🎯 Tiros Totales', tot_shots, 22.5, f"{local}: {shots_loc} | {visita}: {shots_vis}")}
+            {armar_barra_draftea_html('⚽ Tiros a Puerta', tot_shots_on, 8.5, f"{local}: {shots_on_loc} | {visita}: {shots_on_vis}")}
+            {armar_barra_draftea_html('🟨 Tarjetas Amarillas', tot_yellow, 4.5, f"{local}: {yellow_loc} | {visita}: {yellow_vis}")}
+        </div>
+        """
+        
+        st.markdown(html_cuadro_unico, unsafe_allow_html=True)
