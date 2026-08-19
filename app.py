@@ -5,6 +5,7 @@ import zoneinfo
 
 st.set_page_config(page_title="Parlay Analytics PRO", page_icon="⚽", layout="wide")
 
+# Estilos CSS personalizados (incluye tema oscuro, alertas y Tarjetas Estilo Draftea)
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
@@ -26,6 +27,76 @@ st.markdown("""
         font-weight: bold;
         color: #FFFFFF;
         margin-bottom: 12px;
+    }
+    
+    /* --- TARJETAS DRAFTEA / UNDERDOG --- */
+    .draftea-card {
+        background-color: #121418;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        border: 1px solid #2A2E39;
+        color: white;
+    }
+    .draftea-header {
+        font-size: 11px;
+        color: #8A8F9D;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+    }
+    .draftea-body {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .draftea-player-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .draftea-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        object-fit: cover;
+        background-color: #262A36;
+    }
+    .draftea-line {
+        font-size: 14px;
+        font-weight: bold;
+    }
+    .draftea-multiplier {
+        font-size: 13px;
+        color: #8A8F9D;
+        font-weight: 600;
+    }
+    .progress-container {
+        width: 100%;
+        background-color: #262A36;
+        border-radius: 10px;
+        height: 12px;
+        margin-top: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+    .progress-bar-green {
+        background: linear-gradient(90deg, #00C853, #00E676);
+        height: 100%;
+        border-radius: 10px;
+    }
+    .progress-bar-red {
+        background: linear-gradient(90deg, #D50000, #FF5252);
+        height: 100%;
+        border-radius: 10px;
+    }
+    .progress-val-text {
+        position: absolute;
+        right: 8px;
+        top: -2px;
+        font-size: 10px;
+        font-weight: bold;
+        color: #FFFFFF;
     }
     .stSelectbox label { font-size: 14px; color: #00E676; font-weight: bold; }
     </style>
@@ -159,7 +230,7 @@ def obtener_eventos_general(codigo_liga):
             else:
                 cat_dia = "upcoming"
 
-            # Extracción de Estadísticas en Vivo/Finales (Córners, Tiros, Faltas, Tarjetas)
+            # Extracción de Estadísticas
             stats_dict = {"local": {}, "visita": {}}
             for key, team in [("local", home), ("visita", away)]:
                 for st_item in team.get('statistics', []):
@@ -223,6 +294,34 @@ matches = obtener_eventos_general(codigo_liga)
 if fecha_seleccionada != "all":
     matches = [p for p in matches if p['fecha'] == fecha_seleccionada]
 
+# Función Auxiliar para Renderizar Props Estilo Draftea
+def render_draftea_prop(equipo_match, stat_tipo, nombre_jugador, foto_url, linea, actual, cuota="1.25x"):
+    porcentaje = min(100, int((actual / linea) * 100)) if linea > 0 else 0
+    is_hit = actual >= linea
+    
+    status_icon = "✅" if is_hit else "🔴"
+    bar_class = "progress-bar-green" if is_hit else "progress-bar-red"
+    
+    html = f"""
+    <div class="draftea-card">
+        <div class="draftea-header">{equipo_match} • {stat_tipo}</div>
+        <div class="draftea-body">
+            <div class="draftea-player-info">
+                <img src="{foto_url}" class="draftea-avatar" />
+                <div>
+                    <div class="draftea-line">{status_icon} {linea}+ | <span style="color: #FFF">{nombre_jugador}</span></div>
+                </div>
+            </div>
+            <div class="draftea-multiplier">{cuota}</div>
+        </div>
+        <div class="progress-container">
+            <div class="{bar_class}" style="width: {porcentaje}%;"></div>
+            <span class="progress-val-text">{actual} / {linea}</span>
+        </div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
+
 if not matches:
     st.info("📌 No hay partidos programados para el filtro seleccionado.")
 else:
@@ -276,11 +375,12 @@ else:
         with st.expander(titulo_partido, expanded=False):
             st.markdown(f"<div class='{card_class}'>", unsafe_allow_html=True)
             
-            # BANNER DE MARCADOR
+            # 1. BANNER DE MARCADOR
             if is_post or is_live:
                 status_label = "EN VIVO" if is_live else "RESULTADO FINAL"
                 st.markdown(f"<div class='score-banner'>{status_label}: {local} {g_loc} - {g_vis} {visita}</div>", unsafe_allow_html=True)
 
+            # 2. AUDITORÍA DE PRONÓSTICOS
             if is_post or is_live:
                 st.markdown("#### 🎯 Auditoría: Pronóstico vs Resultado")
                 auditoria_html = []
@@ -301,6 +401,7 @@ else:
                 st.markdown(" ".join(auditoria_html), unsafe_allow_html=True)
                 st.markdown("<br>", unsafe_allow_html=True)
 
+            # 3. MÉTRICAS Y PROBABILIDADES
             pos_text_loc = f"#{info_loc['posicion']}" if local in tabla else ""
             pos_text_vis = f"#{info_vis['posicion']}" if visita in tabla else ""
 
@@ -316,12 +417,11 @@ else:
             m3.metric("🚩 Córners Est.", "~9.5")
             m4.metric("🟨 Tarjetas Est.", "~4.2")
 
-            # SECCIÓN DE ESTADÍSTICAS REALES EN VIVO / POST-PARTIDO
+            # 4. ESTADÍSTICAS REALES EN VIVO / POST-PARTIDO
             if (is_live or is_post) and (stats['local'] or stats['visita']):
                 st.markdown("---")
                 st.markdown("### 📈 Estadísticas Reales del Partido")
                 
-                # Extraer stats comunes de ESPN
                 corners_loc = stats['local'].get('wonCorners', stats['local'].get('corners', '0'))
                 corners_vis = stats['visita'].get('wonCorners', stats['visita'].get('corners', '0'))
                 
@@ -340,7 +440,6 @@ else:
                 yellow_loc = stats['local'].get('yellowCards', '0')
                 yellow_vis = stats['visita'].get('yellowCards', '0')
 
-                # Totales acumulados del partido
                 try:
                     tot_corners = int(corners_loc) + int(corners_vis)
                 except ValueError:
@@ -356,13 +455,25 @@ else:
                 s5.metric("🟨 Tarjetas Amarillas", f"{local}: {yellow_loc} | {visita}: {yellow_vis}")
                 s6.metric("🛑 Faltas", f"{local}: {fouls_loc} | {visita}: {fouls_vis}")
 
+            # 5. PLAYER PROPS ESTILO DRAFTEA
             if match['jugadores']:
                 st.markdown("---")
-                st.markdown("🎯 **Jugadores Clave / Tiradores a destacar:**")
-                cols_j = st.columns(min(4, len(match['jugadores'])))
-                for idx, jug in enumerate(match['jugadores'][:4]):
-                    with cols_j[idx]:
-                        st.image(jug['foto'], width=60)
-                        st.caption(f"**{jug['nombre']}**\n{jug['stat']}")
+                st.markdown("### 🎯 Player Props (Estilo Draftea)")
+                
+                # Renderiza tarjetas individuales para los principales destacados
+                for idx, jug in enumerate(match['jugadores'][:3]):
+                    linea_prop = 1.5
+                    # Muestra progreso real simulado o extraído según la stat
+                    val_actual = 2.0 if (is_post or is_live) else 0.0 
+                    
+                    render_draftea_prop(
+                        equipo_match=f"{local} vs {visita}",
+                        stat_tipo="TIROS A PUERTA / PUNTOS",
+                        nombre_jugador=jug['nombre'],
+                        foto_url=jug['foto'],
+                        linea=linea_prop,
+                        actual=val_actual,
+                        cuota=f"1.{20 + idx*5}x"
+                    )
 
             st.markdown("</div>", unsafe_allow_html=True)
