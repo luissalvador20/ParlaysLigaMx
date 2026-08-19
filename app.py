@@ -10,7 +10,6 @@ st.markdown("""
     <style>
     .main { background-color: #0E1117; }
     
-    /* Contenedor Único por Partido con Bordes de Color */
     .card-live {
         background-color: #1A1D24;
         border-radius: 12px;
@@ -59,7 +58,6 @@ st.markdown("""
         margin-bottom: 14px;
     }
 
-    /* Fila de Predicción Integrada */
     .pred-row {
         background-color: #121418;
         padding: 10px 14px;
@@ -90,7 +88,6 @@ st.markdown("""
         color: #00E676;
     }
 
-    /* Barras estilo Draftea */
     .draftea-section-title {
         font-size: 13px;
         font-weight: bold;
@@ -115,13 +112,8 @@ st.markdown("""
         font-weight: bold;
         margin-bottom: 6px;
     }
-    .draftea-title {
-        color: #FFFFFF;
-    }
-    .draftea-details {
-        color: #8A8F9D;
-        font-size: 11px;
-    }
+    .draftea-title { color: #FFFFFF; }
+    .draftea-details { color: #8A8F9D; font-size: 11px; }
     .progress-container {
         width: 100%;
         background-color: #262A36;
@@ -280,7 +272,6 @@ def obtener_eventos_general(codigo_liga):
             else:
                 cat_dia = "upcoming"
 
-            # Extracción de Estadísticas
             stats_dict = {"local": {}, "visita": {}}
             for key, team in [("local", home), ("visita", away)]:
                 for st_item in team.get('statistics', []):
@@ -303,7 +294,7 @@ def obtener_eventos_general(codigo_liga):
     partidos_unicos = {p['id']: p for p in partidos_totales}.values()
     return list(partidos_unicos)
 
-# Selector de Ligas con Conteo y Badges de Colores
+# Selector de Ligas con Badges
 ligas_con_indicador = {}
 for nombre, codigo in LIGAS.items():
     partidos_temp = obtener_eventos_general(codigo)
@@ -331,7 +322,6 @@ matches = obtener_eventos_general(codigo_liga)
 if fecha_seleccionada != "all":
     matches = [p for p in matches if p['fecha'] == fecha_seleccionada]
 
-# Función para generar el HTML de la barra de progreso estilo Draftea
 def armar_barra_draftea_html(titulo, actual_val, linea_val, extra_info="", is_boolean=False):
     if is_boolean:
         is_hit = bool(actual_val)
@@ -352,18 +342,7 @@ def armar_barra_draftea_html(titulo, actual_val, linea_val, extra_info="", is_bo
     status_icon = "✅" if is_hit else "🔴"
     bar_class = "progress-bar-green" if is_hit else "progress-bar-red"
     
-    return f"""
-    <div class="draftea-item">
-        <div class="draftea-header-flex">
-            <span class="draftea-title">{status_icon} {titulo} ({linea_str})</span>
-            <span class="draftea-details">{extra_info}</span>
-        </div>
-        <div class="progress-container">
-            <div class="{bar_class}" style="width: {porcentaje}%;"></div>
-            <span class="progress-val-text">{text_val}</span>
-        </div>
-    </div>
-    """
+    return f"""<div class="draftea-item"><div class="draftea-header-flex"><span class="draftea-title">{status_icon} {titulo} ({linea_str})</span><span class="draftea-details">{extra_info}</span></div><div class="progress-container"><div class="{bar_class}" style="width: {porcentaje}%;"></div><span class="progress-val-text">{text_val}</span></div></div>"""
 
 if not matches:
     st.info("📌 No hay partidos programados para el filtro seleccionado.")
@@ -384,7 +363,6 @@ else:
         is_live = (estado_state == 'in')
         is_post = (estado_state == 'post')
 
-        # Asignación de clase con borde de color según estado/día
         card_class = "card-live" if is_live else (
             "card-today" if cat_dia == "today" else (
                 "card-tomorrow" if cat_dia == "tomorrow" else "card-upcoming"
@@ -401,7 +379,6 @@ else:
         p_loc = min(78.0, max(20.0, (puntos_loc / total_pts) * 100))
         p_vis = min(70.0, max(15.0, (puntos_vis / total_pts) * 100))
 
-        # Definir la línea de apuesta principal recomendada de goles
         dg_total = abs(info_loc['dif_goles']) + abs(info_vis['dif_goles'])
         linea_goles_apuesta = 2.5 if dg_total > 5 else 1.5
 
@@ -412,7 +389,6 @@ else:
         else:
             header_str = f"⏰ {match['hora']} hrs | {local} vs {visita}"
 
-        # Extracción de valores reales
         corners_loc = stats['local'].get('wonCorners', stats['local'].get('corners', '0'))
         corners_vis = stats['visita'].get('wonCorners', stats['visita'].get('corners', '0'))
         try: tot_corners = int(corners_loc) + int(corners_vis)
@@ -433,41 +409,7 @@ else:
         try: tot_yellow = int(yellow_loc) + int(yellow_vis)
         except ValueError: tot_yellow = 0
 
-        # CONSTRUCCIÓN DE CUADRO ÚNICO CON CLASE DE COLOR
-        html_cuadro_unico = f"""
-        <div class="{card_class}">
-            <div class="score-banner">{header_str}</div>
-            
-            <!-- Fila de Estimaciones / Predicción Inicial -->
-            <div class="pred-row">
-                <div class="pred-item">
-                    <div class="pred-label">Victoria</div>
-                    <div class="pred-val">{p_loc:.0f}% - {p_vis:.0f}%</div>
-                </div>
-                <div class="pred-item">
-                    <div class="pred-label">⚽ Línea Goles</div>
-                    <div class="pred-val">+{linea_goles_apuesta}</div>
-                </div>
-                <div class="pred-item">
-                    <div class="pred-label">🚩 Córners</div>
-                    <div class="pred-val">~9.5</div>
-                </div>
-                <div class="pred-item">
-                    <div class="pred-label">🟨 Tarjetas</div>
-                    <div class="pred-val">~4.2</div>
-                </div>
-            </div>
-
-            <!-- Avance Real / Transcurso del Partido -->
-            <div class="draftea-section-title">📊 Avance en Tiempo Real / Resultado</div>
-            
-            {armar_barra_draftea_html(f'⚽ Goles Totales (+{linea_goles_apuesta})', tot_goles, linea_goles_apuesta, f"Marcador: {g_loc} - {g_vis}")}
-            {armar_barra_draftea_html('🤝 Ambos Anotan (AA)', ambos_anotaron, 1.0, f"{local}: {g_loc} | {visita}: {g_vis}", is_boolean=True)}
-            {armar_barra_draftea_html('🚩 Córners Totales', tot_corners, 9.5, f"{local}: {corners_loc} | {visita}: {corners_vis}")}
-            {armar_barra_draftea_html('🎯 Tiros Totales', tot_shots, 22.5, f"{local}: {shots_loc} | {visita}: {shots_vis}")}
-            {armar_barra_draftea_html('⚽ Tiros a Puerta', tot_shots_on, 8.5, f"{local}: {shots_on_loc} | {visita}: {shots_on_vis}")}
-            {armar_barra_draftea_html('🟨 Tarjetas Amarillas', tot_yellow, 4.5, f"{local}: {yellow_loc} | {visita}: {yellow_vis}")}
-        </div>
-        """
+        # HTML Limpio y compacto
+        html_cuadro_unico = f"""<div class="{card_class}"><div class="score-banner">{header_str}</div><div class="pred-row"><div class="pred-item"><div class="pred-label">Victoria</div><div class="pred-val">{p_loc:.0f}% - {p_vis:.0f}%</div></div><div class="pred-item"><div class="pred-label">⚽ Línea Goles</div><div class="pred-val">+{linea_goles_apuesta}</div></div><div class="pred-item"><div class="pred-label">🚩 Córners</div><div class="pred-val">~9.5</div></div><div class="pred-item"><div class="pred-label">🟨 Tarjetas</div><div class="pred-val">~4.2</div></div></div><div class="draftea-section-title">📊 Avance en Tiempo Real / Resultado</div>{armar_barra_draftea_html(f'⚽ Goles Totales (+{linea_goles_apuesta})', tot_goles, linea_goles_apuesta, f"Marcador: {g_loc} - {g_vis}")}{armar_barra_draftea_html('🤝 Ambos Anotan (AA)', ambos_anotaron, 1.0, f"{local}: {g_loc} | {visita}: {g_vis}", is_boolean=True)}{armar_barra_draftea_html('🚩 Córners Totales', tot_corners, 9.5, f"{local}: {corners_loc} | {visita}: {corners_vis}")}{armar_barra_draftea_html('🎯 Tiros Totales', tot_shots, 22.5, f"{local}: {shots_loc} | {visita}: {shots_vis}")}{armar_barra_draftea_html('⚽ Tiros a Puerta', tot_shots_on, 8.5, f"{local}: {shots_on_loc} | {visita}: {shots_on_vis}")}{armar_barra_draftea_html('🟨 Tarjetas Amarillas', tot_yellow, 4.5, f"{local}: {yellow_loc} | {visita}: {yellow_vis}")}</div>"""
         
         st.markdown(html_cuadro_unico, unsafe_allow_html=True)
