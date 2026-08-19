@@ -9,37 +9,26 @@ st.markdown("""
     <style>
     .main { background-color: #0E1117; }
     
-    .card-live { background-color: #261517; padding: 12px; border-radius: 8px; border-left: 5px solid #FF5252; margin-bottom: 4px; }
-    .card-today { background-color: #12241A; padding: 12px; border-radius: 8px; border-left: 5px solid #00E676; margin-bottom: 4px; }
-    .card-tomorrow { background-color: #262312; padding: 12px; border-radius: 8px; border-left: 5px solid #FFD600; margin-bottom: 4px; }
-    .card-upcoming { background-color: #121F2B; padding: 12px; border-radius: 8px; border-left: 5px solid #29B6F6; margin-bottom: 4px; }
-    
     .badge-live { background-color: #FF5252; color: #FFF; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     .badge-today { background-color: #00E676; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .badge-tomorrow { background-color: #FFD600; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
-    .badge-upcoming { background-color: #29B6F6; color: #000; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
     
-    .hit-box { background-color: #1B382B; color: #00E676; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin: 4px 2px; }
+    /* Cajas de acierto y error */
+    .box-hit { background-color: #12241A; color: #00E676; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin: 3px 2px; }
+    .box-miss { background-color: #261517; color: #FF5252; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #FF5252; display: inline-block; margin: 3px 2px; }
     
     .stSelectbox label { font-size: 14px; color: #00E676; font-weight: bold; }
-    
-    /* Estilo para acordeón compacto tipo FotMob */
-    .streamlit-expanderHeader { background-color: #1A1D24 !important; border-radius: 8px !important; }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("⚽ PARLAY ANALYTICS PRO")
 
 LIGAS = {
+    "🇺🇸 MLS": "usa.1",
     "🇲🇽 Liga MX": "mex.1",
     "🇪🇺 Champions League": "uefa.champions",
     "🇬🇧 Premier League": "eng.1",
     "🇪🇸 LaLiga": "esp.1",
-    "🇮🇹 Serie A": "ita.1",
-    "🇩🇪 Bundesliga": "ger.1",
-    "🇫🇷 Ligue 1": "fra.1",
-    "🇸🇦 Liga de Arabia": "sau.1",
-    "🇺🇸 MLS": "usa.1"
+    "🇮🇹 Serie A": "ita.1"
 }
 
 @st.cache_data(ttl=300)
@@ -109,7 +98,7 @@ def obtener_eventos_general(codigo_liga):
         pass
     return []
 
-# Configuración de fechas estilo FotMob
+# Filtro de Días Estilo FotMob
 hoy_dt = datetime.now()
 ayer_dt = hoy_dt - timedelta(days=1)
 manana_dt = hoy_dt + timedelta(days=1)
@@ -122,40 +111,21 @@ dias_fotmob = {
 }
 
 st.subheader("📅 Fecha")
-filtro_dia = st.radio("Selecciona el día:", list(dias_fotmob.keys()), index=1, horizontal=True)
+filtro_dia = st.radio("Selecciona el día:", list(dias_fotmob.keys()), index=0, horizontal=True)
 fecha_seleccionada = dias_fotmob[filtro_dia]
 
-# Conteo rápido de ligas
-ligas_con_indicador = {}
-for nombre, codigo in LIGAS.items():
-    partidos_temp = obtener_eventos_general(codigo)
-    num_live = sum(1 for p in partidos_temp if p['estado_state'] == 'in')
-    num_today = sum(1 for p in partidos_temp if p['cat_dia'] == 'today' and p['estado_state'] != 'in')
-    num_tomorrow = sum(1 for p in partidos_temp if p['cat_dia'] == 'tomorrow')
-    
-    detalles = []
-    if num_live > 0:
-        detalles.append(f"🔴 {num_live} en vivo")
-    if num_today > 0:
-        detalles.append(f"🟢 {num_today} hoy")
-    if num_tomorrow > 0:
-        detalles.append(f"🟡 {num_tomorrow} mañana")
-        
-    label = f"{nombre} | " + " • ".join(detalles) if detalles else f"{nombre} ⚪ (Sin partidos)"
-    ligas_con_indicador[label] = codigo
-
-liga_seleccionada = st.selectbox("🏆 Selecciona Competición:", list(ligas_con_indicador.keys()))
-codigo_liga = ligas_con_indicador[liga_seleccionada]
+# Selección de Liga
+liga_nom = st.selectbox("🏆 Selecciona Competición:", list(LIGAS.keys()))
+codigo_liga = LIGAS[liga_nom]
 
 tabla = obtener_tabla_posiciones(codigo_liga)
 matches = obtener_eventos_general(codigo_liga)
 
-# Filtrado por fecha seleccionada
 if fecha_seleccionada != "all":
     matches = [p for p in matches if p['fecha'] == fecha_seleccionada]
 
 if not matches:
-    st.info("📌 No hay partidos programados para el día o filtro seleccionado.")
+    st.info("📌 No hay partidos programados para este día.")
 else:
     for match in matches:
         local = match['local']
@@ -163,14 +133,37 @@ else:
         g_loc = match['local_score']
         g_vis = match['visita_score']
         tot_goles = g_loc + g_vis
-        fecha_p = match['fecha']
         estado_state = match['estado_state']
         estado_desc = match['estado_desc']
         
         is_live = (estado_state == 'in')
         is_post = (estado_state == 'post')
 
-        # Título corto para el desplegable
+        # --- CÁLCULO DE PROBABILIDADES DEL ALGORITMO ---
+        info_loc = tabla.get(local, {"posicion": 10, "puntos": 15, "dif_goles": 0})
+        info_vis = tabla.get(visita, {"posicion": 10, "puntos": 15, "dif_goles": 0})
+        
+        puntos_loc = info_loc['puntos'] + 3
+        puntos_vis = info_vis['puntos']
+        total_pts = max(1, puntos_loc + puntos_vis)
+        
+        p_loc = min(78.0, max(20.0, (puntos_loc / total_pts) * 100))
+        p_vis = min(70.0, max(15.0, (puntos_vis / total_pts) * 100))
+        p_emp = max(15.0, 100.0 - (p_loc + p_vis))
+        
+        s = p_loc + p_vis + p_emp
+        p_loc, p_vis, p_emp = (p_loc/s)*100, (p_vis/s)*100, (p_emp/s)*100
+
+        dg_total = abs(info_loc['dif_goles']) + abs(info_vis['dif_goles'])
+        over25_prob = min(82.0, max(42.0, 50.0 + (dg_total * 0.8)))
+        aa_prob = min(75.0, max(40.0, 48.0 + (dg_total * 0.5)))
+
+        # ¿A quién daba como favorito la App?
+        prediccion_ganador = local if p_loc > p_vis else visita
+        prediccion_over = over25_prob >= 50.0
+        prediccion_aa = aa_prob >= 50.0
+
+        # --- TITULO SEGÚN ESTADO ---
         if is_live:
             titulo_partido = f"🔴 EN VIVO ({estado_desc}) | {local} {g_loc} - {g_vis} {visita}"
         elif is_post:
@@ -178,42 +171,43 @@ else:
         else:
             titulo_partido = f"⏰ {match['hora']} hrs | {local} vs {visita}"
 
-        # El partido se vuelve desplegable (haz clic para ver pronóstico)
         with st.expander(titulo_partido, expanded=False):
-            if is_live or is_post:
-                hits = []
-                if tot_goles > 2.5: hits.append("✅ Over 2.5 Goles")
-                if g_loc >= 1 and g_vis >= 1: hits.append("✅ Ambos Anotan (AA)")
-                if g_loc > g_vis: hits.append(f"✅ Gana {local}")
-                elif g_vis > g_loc: hits.append(f"✅ Gana {visita}")
-                
-                if hits:
-                    hit_html = " ".join([f"<div class='hit-box'>{h}</div>" for h in hits])
-                    st.markdown(f"<div><b>Resultado del encuentro:</b><br>{hit_html}</div><br>", unsafe_allow_html=True)
+            # EVALUACIÓN DE FALLOS / ACIERTOS SI EL PARTIDO YA TERMINÓ O ESTÁ EN VIVO
+            if is_post or is_live:
+                st.markdown("#### 🎯 Auditoría del Pronóstico vs Realidad")
+                auditoria_html = []
 
-            # Cálculo y muestra de Pronósticos
-            info_loc = tabla.get(local, {"posicion": 10, "puntos": 15, "dif_goles": 0})
-            info_vis = tabla.get(visita, {"posicion": 10, "puntos": 15, "dif_goles": 0})
-            
-            puntos_loc = info_loc['puntos'] + 3
-            puntos_vis = info_vis['puntos']
-            total_pts = max(1, puntos_loc + puntos_vis)
-            
-            p_loc = min(78.0, max(20.0, (puntos_loc / total_pts) * 100))
-            p_vis = min(70.0, max(15.0, (puntos_vis / total_pts) * 100))
-            p_emp = max(15.0, 100.0 - (p_loc + p_vis))
-            
-            s = p_loc + p_vis + p_emp
-            p_loc, p_vis, p_emp = (p_loc/s)*100, (p_vis/s)*100, (p_emp/s)*100
+                # 1. Ganador
+                ganador_real = local if g_loc > g_vis else (visita if g_vis > g_loc else "Empate")
+                if ganador_real == "Empate":
+                    auditoria_html.append("<div class='box-miss'>❌ Ganador: Hubo Empate</div>")
+                elif prediccion_ganador == ganador_real:
+                    auditoria_html.append(f"<div class='box-hit'>✅ Ganador: Atinado ({ganador_real})</div>")
+                else:
+                    auditoria_html.append(f"<div class='box-miss'>❌ Ganador: Falló (Predijo {prediccion_ganador}, ganó {ganador_real})</div>")
 
-            dg_total = abs(info_loc['dif_goles']) + abs(info_vis['dif_goles'])
-            over25_prob = min(82.0, max(42.0, 50.0 + (dg_total * 0.8)))
-            aa_prob = min(75.0, max(40.0, 48.0 + (dg_total * 0.5)))
-            
+                # 2. Over 2.5
+                real_over = (tot_goles > 2.5)
+                if prediccion_over == real_over:
+                    auditoria_html.append(f"<div class='box-hit'>✅ Over 2.5: Atinado ({tot_goles} goles)</div>")
+                else:
+                    auditoria_html.append(f"<div class='box-miss'>❌ Over 2.5: Falló ({tot_goles} goles)</div>")
+
+                # 3. Ambos Anotan
+                real_aa = (g_loc >= 1 and g_vis >= 1)
+                if prediccion_aa == real_aa:
+                    auditoria_html.append(f"<div class='box-hit'>✅ Ambos Anotan: Atinado</div>")
+                else:
+                    auditoria_html.append(f"<div class='box-miss'>❌ Ambos Anotan: Falló</div>")
+
+                st.markdown(" ".join(auditoria_html), unsafe_allow_html=True)
+                st.markdown("---")
+
+            # --- MOSTRAR LOS PORCENTAJES Y PROMPTS DE LA APP ---
             pos_text_loc = f"#{info_loc['posicion']}" if local in tabla else ""
             pos_text_vis = f"#{info_vis['posicion']}" if visita in tabla else ""
 
-            st.markdown("### 📊 Pronóstico e Indicadores")
+            st.markdown("### 📊 Pronóstico Inicial del Algoritmo")
             col1, col2, col3 = st.columns(3)
             col1.metric(f"🟢 Gana {local[:10]} {pos_text_loc}", f"{p_loc:.1f}%")
             col2.metric("⚪ Empate", f"{p_emp:.1f}%")
@@ -222,5 +216,5 @@ else:
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("⚽ Over 2.5", f"{over25_prob:.1f}%")
             m2.metric("🤝 Ambos Anotan", f"{aa_prob:.1f}%")
-            m3.metric("🚩 Córners", "~9.5")
-            m4.metric("🟨 Tarjetas", "~4.2")
+            m3.metric("🚩 Córners Est.", "~9.5")
+            m4.metric("🟨 Tarjetas Est.", "~4.2")
