@@ -21,7 +21,6 @@ st.markdown("""
     
     .hit-box { background-color: #1B382B; color: #00E676; padding: 5px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin-top: 6px; }
     
-    /* Estilos para la barra de fechas */
     .stSelectbox label { font-size: 14px; color: #00E676; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
@@ -71,28 +70,43 @@ def obtener_tabla_posiciones(codigo_liga):
         pass
     return tabla
 
-# 2. Obtener partidos por fecha específica
+# 2. Obtener eventos con categoría de día para los indicadores del menú
 @st.cache_data(ttl=30)
-def obtener_eventos_por_fecha(codigo_liga, fecha_str):
-    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{codigo_liga}/scoreboard?dates={fecha_str}"
+def obtener_eventos_general(codigo_liga):
+    hoy_dt = datetime.now()
+    fecha_inicio = hoy_dt.strftime("%Y%m%d")
+    fecha_fin = (hoy_dt + timedelta(days=10)).strftime("%Y%m%d")
+    url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/{codigo_liga}/scoreboard?dates={fecha_inicio}-{fecha_fin}"
     try:
         res = requests.get(url, timeout=5)
         if res.status_code == 200:
             events = res.json().get('events', [])
             partidos = []
+            str_hoy = hoy_dt.strftime("%Y-%m-%d")
+            str_manana = (hoy_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+
             for ev in events:
                 comp = ev['competitions'][0]
                 home = comp['competitors'][0]
                 away = comp['competitors'][1]
+                fecha_p = ev.get('date', '')[:10]
                 
+                if fecha_p == str_hoy:
+                    cat_dia = "today"
+                elif fecha_p == str_manana:
+                    cat_dia = "tomorrow"
+                else:
+                    cat_dia = "upcoming"
+
                 partidos.append({
                     "id": ev['id'],
                     "local": home['team']['displayName'],
                     "local_score": int(home.get('score', 0)),
                     "visita": away['team']['displayName'],
                     "visita_score": int(away.get('score', 0)),
-                    "fecha": ev.get('date', '')[:10],
+                    "fecha": fecha_p,
                     "hora": ev.get('date', '')[11:16],
+                    "cat_dia": cat_dia,
                     "estado_state": ev['status']['type']['state'],
                     "estado_desc": ev['status']['type']['shortDetail']
                 })
@@ -101,38 +115,69 @@ def obtener_eventos_por_fecha(codigo_liga, fecha_str):
         pass
     return []
 
-# Menú de Seleccion de Liga
-col_liga, col_fecha = st.columns([1, 1])
+# Generación del selector con los conteos en colores
+ligas_con_indicador = {}
+for nombre, codigo in LIGAS.items():
+    partidos_temp = obtener_eventos_general(codigo)
+    num_live = sum(1 for p in partidos_temp if p['estado_state'] == 'in')
+    num_today = sum(1 for p in partidos_temp if p['cat_dia'] == 'today' and p['estado_state'] != 'in')
+    num_tomorrow = sum(1 for p in partidos_temp if p['cat_dia'] == 'tomorrow')
+    num_upcoming = sum(1 for p in partidos_temp if p['cat_dia'] == 'upcoming')
+    
+    detalles = []
+    if num_live > 0:
+        detalles.append(f"🔴 {num_live} en vivo")
+    if num_today > 0:
+        detalles.append(f"🟢 {num_today} hoy")
+    if num_tomorrow > 0:
+        detalles.append(f"🟡 {num_tomorrow} mañana")
+    if num_upcoming > 0:
+        detalles.append(f"🔵 {num_upcoming} próximos")
+        
+    if detalles:
+        label = f"{nombre} | " + " • ".join(detalles)
+    else:
+        label = f"{nombre} ⚪ (Sin partidos)"
+        
+    ligas_con_indicador[label] = codigo
+
+col_liga, col_fecha = st.columns([1.2, 1])
 
 with col_liga:
-    liga_nombre = st.selectbox("🏆 Selecciona Competición:", list(LIGAS.keys()))
-    codigo_liga = LIGAS[liga_nombre]
+    liga_seleccionada = st.selectbox("🏆 Selecciona Competición:", list(ligas_con_indicador.keys()))
+    codigo_liga = ligas_con_indicador[liga_seleccionada]
 
-# FILTRO DE FECHAS ESTILO FOTMOB / PLAYDOIT
 hoy_dt = datetime.now()
 manana_dt = hoy_dt + timedelta(days=1)
 
 opciones_fechas = {
-    "🟢 HOY": hoy_dt.strftime("%Y%m%d"),
-    "🟡 MAÑANA": manana_dt.strftime("%Y%m%d"),
-    "🔵 PRÓXIMOS 7 DÍAS": f"{hoy_dt.strftime('%Y%m%d')}-{(hoy_dt + timedelta(days=7)).strftime('%Y%m%d')}"
+    "TODOS": "all",
+    "🟢 HOY": hoy_dt.strftime("%Y-%m-%d"),
+    "🟡 MAÑANA": manana_dt.strftime("%Y-%m-%d"),
+    "🔵 PRÓXIMOS DÍAS": "upcoming"
 }
 
 with col_fecha:
     filtro_fecha = st.radio("📅 Filtrar Fechas (Estilo Playdoit):", list(opciones_fechas.keys()), horizontal=True)
-    fecha_codigo = opciones_fechas[filtro_fecha]
 
 mostrar_pronosticos = st.checkbox("📊 Mostrar pronósticos basados en la Tabla General", value=True)
 
-# Obtener tabla y partidos
 tabla = obtener_tabla_posiciones(codigo_liga)
-matches = obtener_eventos_por_fecha(codigo_liga, fecha_codigo)
+matches = obtener_eventos_general(codigo_liga)
+
+# Filtrar según la pestaña seleccionada
+if filtro_fecha == "🟢 HOY":
+    matches = [p for p in matches if p['fecha'] == hoy_dt.strftime("%Y-%m-%d")]
+elif filtro_fecha == "🟡 MAÑANA":
+    matches = [p for p in matches if p['fecha'] == manana_dt.strftime("%Y-%m-%d")]
+elif filtro_fecha == "🔵 PRÓXIMOS DÍAS":
+    matches = [p for p in matches if p['cat_dia'] == 'upcoming']
 
 str_hoy = hoy_dt.strftime("%Y-%m-%d")
 str_manana = manana_dt.strftime("%Y-%m-%d")
 
 if not matches:
-    st.info("📌 No hay partidos programados para esta fecha en la liga seleccionada.")
+    st.info("📌 No hay partidos programados para este filtro en la liga seleccionada.")
 else:
     for match in matches:
         local = match['local']
@@ -147,7 +192,6 @@ else:
         is_live = (estado_state == 'in')
         is_post = (estado_state == 'post')
 
-        # Clasificación por fecha
         if is_live:
             st.markdown(f"""
                 <div class="card-live">
@@ -192,26 +236,21 @@ else:
                 hit_html = " ".join([f"<div class='hit-box'>{h}</div>" for h in hits])
                 st.markdown(f"<div>{hit_html}</div><br>", unsafe_allow_html=True)
 
-        # CÁLCULO DE PROBABILIDAD REAL SEGÚN POSICIÓN EN LA TABLA GENERAL
         if mostrar_pronosticos:
             info_loc = tabla.get(local, {"posicion": 10, "puntos": 15, "dif_goles": 0})
             info_vis = tabla.get(visita, {"posicion": 10, "puntos": 15, "dif_goles": 0})
             
-            puntos_loc = info_loc['puntos'] + 3 # Ventaja de localía (+3 pts virtuales)
+            puntos_loc = info_loc['puntos'] + 3
             puntos_vis = info_vis['puntos']
-            
             total_pts = max(1, puntos_loc + puntos_vis)
             
-            # Cálculo porcentual
             p_loc = min(78.0, max(20.0, (puntos_loc / total_pts) * 100))
             p_vis = min(70.0, max(15.0, (puntos_vis / total_pts) * 100))
             p_emp = max(15.0, 100.0 - (p_loc + p_vis))
             
-            # Normalizar
             s = p_loc + p_vis + p_emp
             p_loc, p_vis, p_emp = (p_loc/s)*100, (p_vis/s)*100, (p_emp/s)*100
 
-            # Estimación Over / Ambos Anotan basado en diferencia de goles
             dg_total = abs(info_loc['dif_goles']) + abs(info_vis['dif_goles'])
             over25_prob = min(82.0, max(42.0, 50.0 + (dg_total * 0.8)))
             aa_prob = min(75.0, max(40.0, 48.0 + (dg_total * 0.5)))
