@@ -5,16 +5,17 @@ import zoneinfo
 
 st.set_page_config(page_title="Parlay Analytics PRO", page_icon="⚽", layout="wide")
 
-# Estilos CSS
+# Estilos CSS Limpios
 st.markdown("""
     <style>
     .main { background-color: #0E1117; }
     
+    /* Tarjeta Contenedora según estado */
     .card-live {
         background-color: #1A1D24;
         border-radius: 12px;
         padding: 16px;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         border: 1px solid #2A2E39;
         border-left: 6px solid #FF5252;
         color: white;
@@ -23,7 +24,7 @@ st.markdown("""
         background-color: #1A1D24;
         border-radius: 12px;
         padding: 16px;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         border: 1px solid #2A2E39;
         border-left: 6px solid #00E676;
         color: white;
@@ -32,7 +33,7 @@ st.markdown("""
         background-color: #1A1D24;
         border-radius: 12px;
         padding: 16px;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         border: 1px solid #2A2E39;
         border-left: 6px solid #FFD600;
         color: white;
@@ -41,7 +42,7 @@ st.markdown("""
         background-color: #1A1D24;
         border-radius: 12px;
         padding: 16px;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
         border: 1px solid #2A2E39;
         border-left: 6px solid #29B6F6;
         color: white;
@@ -49,76 +50,38 @@ st.markdown("""
     
     .score-banner {
         background-color: #262A36;
-        padding: 10px;
+        padding: 12px;
         border-radius: 8px;
         text-align: center;
         font-size: 18px;
         font-weight: bold;
         color: #FFFFFF;
-        margin-bottom: 14px;
-    }
-
-    .pred-row {
-        background-color: #121418;
-        padding: 10px 14px;
-        border-radius: 8px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 14px;
-        border: 1px solid #2A2E39;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    .pred-item {
-        text-align: center;
-        flex: 1;
-        min-width: 80px;
-    }
-    .pred-label {
-        font-size: 11px;
-        color: #8A8F9D;
-        text-transform: uppercase;
-        font-weight: 600;
-    }
-    .pred-val {
-        font-size: 15px;
-        font-weight: bold;
-        color: #00E676;
-    }
-
-    .draftea-section-title {
-        font-size: 13px;
-        font-weight: bold;
-        color: #8A8F9D;
-        text-transform: uppercase;
-        margin-top: 10px;
-        margin-bottom: 8px;
-        letter-spacing: 0.5px;
+        margin-bottom: 16px;
     }
 
     .draftea-item {
         background-color: #121418;
         border-radius: 8px;
-        padding: 10px 12px;
-        margin-bottom: 8px;
+        padding: 10px 14px;
+        margin-bottom: 10px;
         border: 1px solid #2A2E39;
     }
     .draftea-header-flex {
         display: flex;
         justify-content: space-between;
-        font-size: 12px;
+        align-items: center;
+        font-size: 13px;
         font-weight: bold;
         margin-bottom: 6px;
     }
     .draftea-title { color: #FFFFFF; }
-    .draftea-details { color: #8A8F9D; font-size: 11px; }
+    .draftea-details { color: #8A8F9D; font-size: 12px; }
+    
     .progress-container {
         width: 100%;
         background-color: #262A36;
         border-radius: 6px;
-        height: 14px;
+        height: 16px;
         position: relative;
         overflow: hidden;
     }
@@ -136,17 +99,17 @@ st.markdown("""
         position: absolute;
         right: 8px;
         top: 0px;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: bold;
         color: #FFFFFF;
-        line-height: 14px;
+        line-height: 16px;
     }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("⚽ PARLAY ANALYTICS PRO")
 
-# Configuración de Zona Horaria
+# Zona Horaria
 try:
     tz_local = zoneinfo.ZoneInfo("America/Mexico_City")
 except Exception:
@@ -167,7 +130,6 @@ st.subheader("📅 Fecha")
 filtro_dia = st.radio("Selecciona el día:", list(dias_fotmob.keys()), index=1, horizontal=True)
 fecha_seleccionada = dias_fotmob[filtro_dia]
 
-# Diccionario de Ligas
 LIGAS = {
     "🇲🇽 Liga MX": "mex.1",
     "🇪🇺 Champions League": "uefa.champions",
@@ -371,13 +333,6 @@ else:
 
         info_loc = tabla.get(local, {"posicion": 10, "puntos": 15, "dif_goles": 0})
         info_vis = tabla.get(visita, {"posicion": 10, "puntos": 15, "dif_goles": 0})
-        
-        puntos_loc = info_loc['puntos'] + 3
-        puntos_vis = info_vis['puntos']
-        total_pts = max(1, puntos_loc + puntos_vis)
-        
-        p_loc = min(78.0, max(20.0, (puntos_loc / total_pts) * 100))
-        p_vis = min(70.0, max(15.0, (puntos_vis / total_pts) * 100))
 
         dg_total = abs(info_loc['dif_goles']) + abs(info_vis['dif_goles'])
         linea_goles_apuesta = 2.5 if dg_total > 5 else 1.5
@@ -409,7 +364,7 @@ else:
         try: tot_yellow = int(yellow_loc) + int(yellow_vis)
         except ValueError: tot_yellow = 0
 
-        # HTML Limpio y compacto
-        html_cuadro_unico = f"""<div class="{card_class}"><div class="score-banner">{header_str}</div><div class="pred-row"><div class="pred-item"><div class="pred-label">Victoria</div><div class="pred-val">{p_loc:.0f}% - {p_vis:.0f}%</div></div><div class="pred-item"><div class="pred-label">⚽ Línea Goles</div><div class="pred-val">+{linea_goles_apuesta}</div></div><div class="pred-item"><div class="pred-label">🚩 Córners</div><div class="pred-val">~9.5</div></div><div class="pred-item"><div class="pred-label">🟨 Tarjetas</div><div class="pred-val">~4.2</div></div></div><div class="draftea-section-title">📊 Avance en Tiempo Real / Resultado</div>{armar_barra_draftea_html(f'⚽ Goles Totales (+{linea_goles_apuesta})', tot_goles, linea_goles_apuesta, f"Marcador: {g_loc} - {g_vis}")}{armar_barra_draftea_html('🤝 Ambos Anotan (AA)', ambos_anotaron, 1.0, f"{local}: {g_loc} | {visita}: {g_vis}", is_boolean=True)}{armar_barra_draftea_html('🚩 Córners Totales', tot_corners, 9.5, f"{local}: {corners_loc} | {visita}: {corners_vis}")}{armar_barra_draftea_html('🎯 Tiros Totales', tot_shots, 22.5, f"{local}: {shots_loc} | {visita}: {shots_vis}")}{armar_barra_draftea_html('⚽ Tiros a Puerta', tot_shots_on, 8.5, f"{local}: {shots_on_loc} | {visita}: {shots_on_vis}")}{armar_barra_draftea_html('🟨 Tarjetas Amarillas', tot_yellow, 4.5, f"{local}: {yellow_loc} | {visita}: {yellow_vis}")}</div>"""
+        # Diseño directo y sin recuadros confusos arriba
+        html_cuadro_unico = f"""<div class="{card_class}"><div class="score-banner">{header_str}</div>{armar_barra_draftea_html(f'⚽ Goles Totales (+{linea_goles_apuesta})', tot_goles, linea_goles_apuesta, f"Marcador: {g_loc} - {g_vis}")}{armar_barra_draftea_html('🤝 Ambos Anotan (AA)', ambos_anotaron, 1.0, f"{local}: {g_loc} | {visita}: {g_vis}", is_boolean=True)}{armar_barra_draftea_html('🚩 Córners Totales', tot_corners, 9.5, f"{local}: {corners_loc} | {visita}: {corners_vis}")}{armar_barra_draftea_html('🎯 Tiros Totales', tot_shots, 22.5, f"{local}: {shots_loc} | {visita}: {shots_vis}")}{armar_barra_draftea_html('⚽ Tiros a Puerta', tot_shots_on, 8.5, f"{local}: {shots_on_loc} | {visita}: {shots_on_vis}")}{armar_barra_draftea_html('🟨 Tarjetas Amarillas', tot_yellow, 4.5, f"{local}: {yellow_loc} | {visita}: {yellow_vis}")}</div>"""
         
         st.markdown(html_cuadro_unico, unsafe_allow_html=True)
