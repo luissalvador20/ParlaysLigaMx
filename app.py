@@ -22,13 +22,18 @@ st.markdown("""
 
 st.title("⚽ PARLAY ANALYTICS PRO")
 
+# DICCIONARIO CON LAS 10 LIGAS INCLUYENDO EUROPA LEAGUE
 LIGAS = {
-    "🇺🇸 MLS": "usa.1",
     "🇲🇽 Liga MX": "mex.1",
     "🇪🇺 Champions League": "uefa.champions",
+    "🇪🇺 Europa League": "uefa.europa",
     "🇬🇧 Premier League": "eng.1",
     "🇪🇸 LaLiga": "esp.1",
-    "🇮🇹 Serie A": "ita.1"
+    "🇮🇹 Serie A": "ita.1",
+    "🇩🇪 Bundesliga": "ger.1",
+    "🇫🇷 Ligue 1": "fra.1",
+    "🇸🇦 Liga de Arabia": "sau.1",
+    "🇺🇸 MLS": "usa.1"
 }
 
 @st.cache_data(ttl=300)
@@ -111,7 +116,7 @@ dias_fotmob = {
 }
 
 st.subheader("📅 Fecha")
-filtro_dia = st.radio("Selecciona el día:", list(dias_fotmob.keys()), index=0, horizontal=True)
+filtro_dia = st.radio("Selecciona el día:", list(dias_fotmob.keys()), index=1, horizontal=True)
 fecha_seleccionada = dias_fotmob[filtro_dia]
 
 # Selección de Liga
@@ -158,12 +163,11 @@ else:
         over25_prob = min(82.0, max(42.0, 50.0 + (dg_total * 0.8)))
         aa_prob = min(75.0, max(40.0, 48.0 + (dg_total * 0.5)))
 
-        # ¿A quién daba como favorito la App?
         prediccion_ganador = local if p_loc > p_vis else visita
         prediccion_over = over25_prob >= 50.0
         prediccion_aa = aa_prob >= 50.0
 
-        # --- TITULO SEGÚN ESTADO ---
+        # --- TÍTULO SEGÚN ESTADO ---
         if is_live:
             titulo_partido = f"🔴 EN VIVO ({estado_desc}) | {local} {g_loc} - {g_vis} {visita}"
         elif is_post:
@@ -172,7 +176,6 @@ else:
             titulo_partido = f"⏰ {match['hora']} hrs | {local} vs {visita}"
 
         with st.expander(titulo_partido, expanded=False):
-            # EVALUACIÓN DE FALLOS / ACIERTOS SI EL PARTIDO YA TERMINÓ O ESTÁ EN VIVO
             if is_post or is_live:
                 st.markdown("#### 🎯 Auditoría del Pronóstico vs Realidad")
                 auditoria_html = []
@@ -203,7 +206,7 @@ else:
                 st.markdown(" ".join(auditoria_html), unsafe_allow_html=True)
                 st.markdown("---")
 
-            # --- MOSTRAR LOS PORCENTAJES Y PROMPTS DE LA APP ---
+            # --- METRICAS DE LA APP ---
             pos_text_loc = f"#{info_loc['posicion']}" if local in tabla else ""
             pos_text_vis = f"#{info_vis['posicion']}" if visita in tabla else ""
 
