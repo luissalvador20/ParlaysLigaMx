@@ -17,6 +17,16 @@ st.markdown("""
     .box-hit { background-color: #12241A; color: #00E676; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #00E676; display: inline-block; margin: 2px; }
     .box-miss { background-color: #261517; color: #FF5252; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; border: 1px solid #FF5252; display: inline-block; margin: 2px; }
     
+    .score-banner {
+        background-color: #262A36;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        color: #FFFFFF;
+        margin-bottom: 12px;
+    }
     .stSelectbox label { font-size: 14px; color: #00E676; font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
@@ -83,7 +93,6 @@ def obtener_tabla_posiciones(codigo_liga):
 
 @st.cache_data(ttl=60)
 def obtener_eventos_general(codigo_liga):
-    # Rango amplio de fechas para asegurar Ayer, Hoy y Mañana
     fecha_inicio = (hoy_dt - timedelta(days=3)).strftime("%Y%m%d")
     fecha_fin = (hoy_dt + timedelta(days=7)).strftime("%Y%m%d")
     
@@ -150,6 +159,12 @@ def obtener_eventos_general(codigo_liga):
             else:
                 cat_dia = "upcoming"
 
+            # Extracción de Estadísticas en Vivo/Finales (Córners, Tiros, Faltas, Tarjetas)
+            stats_dict = {"local": {}, "visita": {}}
+            for key, team in [("local", home), ("visita", away)]:
+                for st_item in team.get('statistics', []):
+                    stats_dict[key][st_item.get('name')] = st_item.get('displayValue', '0')
+
             leaders = comp.get('leaders', [])
             jugadores = []
             for leader in leaders:
@@ -173,10 +188,10 @@ def obtener_eventos_general(codigo_liga):
                 "cat_dia": cat_dia,
                 "estado_state": ev['status']['type']['state'],
                 "estado_desc": ev['status']['type']['shortDetail'],
-                "jugadores": jugadores
+                "jugadores": jugadores,
+                "stats": stats_dict
             })
             
-    # Eliminar duplicados por ID de partido
     partidos_unicos = {p['id']: p for p in partidos_totales}.values()
     return list(partidos_unicos)
 
@@ -220,6 +235,7 @@ else:
         estado_state = match['estado_state']
         estado_desc = match['estado_desc']
         cat_dia = match['cat_dia']
+        stats = match['stats']
         
         is_live = (estado_state == 'in')
         is_post = (estado_state == 'post')
@@ -260,6 +276,11 @@ else:
         with st.expander(titulo_partido, expanded=False):
             st.markdown(f"<div class='{card_class}'>", unsafe_allow_html=True)
             
+            # BANNER DE MARCADOR
+            if is_post or is_live:
+                status_label = "EN VIVO" if is_live else "RESULTADO FINAL"
+                st.markdown(f"<div class='score-banner'>{status_label}: {local} {g_loc} - {g_vis} {visita}</div>", unsafe_allow_html=True)
+
             if is_post or is_live:
                 st.markdown("#### 🎯 Auditoría: Pronóstico vs Resultado")
                 auditoria_html = []
@@ -283,6 +304,7 @@ else:
             pos_text_loc = f"#{info_loc['posicion']}" if local in tabla else ""
             pos_text_vis = f"#{info_vis['posicion']}" if visita in tabla else ""
 
+            st.markdown("#### 📊 Probabilidades y Estimaciones")
             col1, col2, col3 = st.columns(3)
             col1.metric(f"🟢 Gana {local[:10]} {pos_text_loc}", f"{p_loc:.1f}%")
             col2.metric("⚪ Empate", f"{p_emp:.1f}%")
@@ -293,6 +315,46 @@ else:
             m2.metric("🤝 Ambos Anotan", f"{aa_prob:.1f}%")
             m3.metric("🚩 Córners Est.", "~9.5")
             m4.metric("🟨 Tarjetas Est.", "~4.2")
+
+            # SECCIÓN DE ESTADÍSTICAS REALES EN VIVO / POST-PARTIDO
+            if (is_live or is_post) and (stats['local'] or stats['visita']):
+                st.markdown("---")
+                st.markdown("### 📈 Estadísticas Reales del Partido")
+                
+                # Extraer stats comunes de ESPN
+                corners_loc = stats['local'].get('wonCorners', stats['local'].get('corners', '0'))
+                corners_vis = stats['visita'].get('wonCorners', stats['visita'].get('corners', '0'))
+                
+                shots_loc = stats['local'].get('totalShots', stats['local'].get('shots', '0'))
+                shots_vis = stats['visita'].get('totalShots', stats['visita'].get('shots', '0'))
+
+                shots_on_target_loc = stats['local'].get('shotsOnTarget', '0')
+                shots_on_target_vis = stats['visita'].get('shotsOnTarget', '0')
+
+                possession_loc = stats['local'].get('possessionPct', '50%')
+                possession_vis = stats['visita'].get('possessionPct', '50%')
+
+                fouls_loc = stats['local'].get('foulsCommitted', stats['local'].get('fouls', '0'))
+                fouls_vis = stats['visita'].get('foulsCommitted', stats['visita'].get('fouls', '0'))
+
+                yellow_loc = stats['local'].get('yellowCards', '0')
+                yellow_vis = stats['visita'].get('yellowCards', '0')
+
+                # Totales acumulados del partido
+                try:
+                    tot_corners = int(corners_loc) + int(corners_vis)
+                except ValueError:
+                    tot_corners = "-"
+
+                s1, s2, s3, s4 = st.columns(4)
+                s1.metric("🚩 Córners Totales", f"{tot_corners}", f"{local}: {corners_loc} | {visita}: {corners_vis}")
+                s2.metric("🎯 Tiros Totales", f"{local}: {shots_loc}", f"{visita}: {shots_vis}")
+                s3.metric("⚽ Tiros a Puerta", f"{local}: {shots_on_target_loc}", f"{visita}: {shots_on_target_vis}")
+                s4.metric("⏱️ Posesión", f"{local}: {possession_loc}", f"{visita}: {possession_vis}")
+
+                s5, s6 = st.columns(2)
+                s5.metric("🟨 Tarjetas Amarillas", f"{local}: {yellow_loc} | {visita}: {yellow_vis}")
+                s6.metric("🛑 Faltas", f"{local}: {fouls_loc} | {visita}: {fouls_vis}")
 
             if match['jugadores']:
                 st.markdown("---")
